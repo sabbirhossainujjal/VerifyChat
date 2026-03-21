@@ -44,23 +44,20 @@ function PredictCard({ claim, checked, reasoning, onCheckChange, onReasoningChan
     <div className="rounded-lg border border-gray-200 p-4 bg-white">
       <p className="text-sm text-gray-800 leading-relaxed mb-3">{claim.text}</p>
 
-      {claim.sources && claim.sources.length > 0 && (
+      {claim.source_url && (
         <div className="mb-3">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Sources</p>
           <div className="flex flex-col gap-1">
-            {claim.sources.map((source, idx) => (
-              <a
-                key={idx}
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => handleLinkClick(source.url)}
-                className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate"
-                title={source.title || source.url}
-              >
-                {source.title || source.url}
-              </a>
-            ))}
+            <a
+              href={claim.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => handleLinkClick(claim.source_url)}
+              className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate"
+              title={claim.source_title || claim.source_url}
+            >
+              {claim.source_title || claim.source_url}
+            </a>
           </div>
         </div>
       )}
@@ -143,11 +140,11 @@ function RevealCard({ claim, verdict, studentPredicted, logEvent }) {
             </p>
           )}
 
-          {claim.sources && claim.sources.length > 0 && (
+          {verdict?.sources && verdict.sources.length > 0 && (
             <div className="mt-2 flex flex-col gap-0.5">
-              {claim.sources.map((source, idx) => (
+              {verdict.sources.map((source) => (
                 <a
-                  key={idx}
+                  key={source.url}
                   href={source.url}
                   target="_blank"
                   rel="noopener noreferrer"

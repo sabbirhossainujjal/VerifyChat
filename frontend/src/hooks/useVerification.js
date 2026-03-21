@@ -55,16 +55,16 @@ export function useVerification(sessionId, logEvent) {
   }, [sessionId, logEvent]);
 
   const submitPrediction = useCallback(async (predictions) => {
-    const predictedInaccurate = predictions.filter(p => p.predicted_inaccurate);
-    logEvent('prediction_submitted', {
-      num_predicted_inaccurate: predictedInaccurate.length,
-      claim_ids: predictedInaccurate.map(p => p.claim_id),
-    });
-
     const predictionStartMs = Date.now();
 
     try {
       const predictResult = await submitPredictions(sessionId, state.currentMessageId, predictions);
+
+      const predictedInaccurate = predictions.filter(p => p.predicted_inaccurate);
+      logEvent('prediction_submitted', {
+        num_predicted_inaccurate: predictedInaccurate.length,
+        claim_ids: predictedInaccurate.map(p => p.claim_id),
+      });
       const revealResult = await revealVerdicts(sessionId, state.currentMessageId, predictResult.prediction_id);
 
       dispatch({

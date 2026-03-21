@@ -19,26 +19,21 @@ export const verifyClaims = (sessionId, messageId, aiResponse) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, message_id: messageId, ai_response: aiResponse })
-  }).then(r => r.json());
+  }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 export const submitPredictions = (sessionId, messageId, predictions) =>
   fetch(`${BASE}/api/predict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: sessionId,
-      message_id: messageId,
-      predictions,
-      timestamp: new Date().toISOString()
-    })
-  }).then(r => r.json());
+    body: JSON.stringify({ session_id: sessionId, message_id: messageId, predictions })
+  }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 export const revealVerdicts = (sessionId, messageId, predictionId) =>
   fetch(`${BASE}/api/reveal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, message_id: messageId, prediction_id: predictionId })
-  }).then(r => r.json());
+  }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
 
 export const logEvent = (sessionId, eventType, eventData = {}) =>
   fetch(`${BASE}/api/log`, {

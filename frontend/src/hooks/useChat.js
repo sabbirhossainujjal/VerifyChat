@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { sendChatMessage } from '../services/api';
 
 export function useChat(sessionId, onResponseComplete, logEvent) {
   const [messages, setMessages] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const accRef = useRef('');
 
   const sendMessage = useCallback(async (text) => {
     if (!sessionId || isStreaming) return;
@@ -16,37 +17,49 @@ export function useChat(sessionId, onResponseComplete, logEvent) {
       { role: 'assistant', content: '' }
     ]);
     setIsStreaming(true);
+    accRef.current = '';
 
     try {
       const response = await sendChatMessage(sessionId, text);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let fullResponse = '';
+      const decoder = new TextDecoder('utf-8');
+      let lineBuffer = '';
       let messageId = null;
+      let fullResponse = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value);
-        for (const line of chunk.split('\n')) {
+
+        lineBuffer += decoder.decode(value, { stream: true });
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop(); // keep incomplete last line
+
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
+          let data;
           try {
-            const data = JSON.parse(line.slice(6));
-            if (data.done) {
-              messageId = data.message_id;
-              fullResponse = data.full_response;
-              setIsStreaming(false);
-              logEvent('response_received', { response_length: fullResponse.length, message_id: messageId });
-              onResponseComplete(messageId, fullResponse);
-            } else {
-              fullResponse += data.token;
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { ...updated[updated.length - 1], content: fullResponse };
-                return updated;
-              });
-            }
-          } catch (e) { /* ignore parse errors */ }
+            data = JSON.parse(line.slice(6));
+          } catch (e) {
+            continue; // skip malformed JSON
+          }
+          if (data.done) {
+            messageId = data.message_id;
+            fullResponse = data.full_response;
+            setIsStreaming(false);
+            logEvent('response_received', { response_length: fullResponse.length, message_id: messageId });
+            onResponseComplete(messageId, fullResponse);
+          } else {
+            accRef.current += data.token;
+            const snapshot = accRef.current;
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...updated[updated.length - 1], content: snapshot };
+              return updated;
+            });
+          }
         }
       }
     } catch (err) {
