@@ -25,8 +25,8 @@ async def predict(request: PredictRequest) -> PredictResponse:
                 """
                 INSERT INTO predictions (
                     id, session_id, message_id, claim_id,
-                    predicted_inaccurate, reasoning
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    predicted_inaccurate, prediction_label, reasoning
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     row_id,
@@ -34,6 +34,7 @@ async def predict(request: PredictRequest) -> PredictResponse:
                     request.message_id,
                     item.claim_id,
                     item.predicted_inaccurate,
+                    item.prediction_label,
                     item.reasoning,
                 ),
             )

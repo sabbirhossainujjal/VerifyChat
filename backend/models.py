@@ -41,6 +41,7 @@ class VerifyResponse(BaseModel):
 class PredictionItem(BaseModel):
     claim_id: str
     predicted_inaccurate: bool
+    prediction_label: Optional[str] = None  # 'accurate' | 'neutral' | 'false'
     reasoning: Optional[str] = None
 
 

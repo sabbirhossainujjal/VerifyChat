@@ -40,13 +40,14 @@ async def _stream_chat(session_id: str, user_message: str) -> AsyncGenerator[str
     full_response_parts: list[str] = []
 
     try:
-        async for chunk in _client.aio.models.generate_content_stream(
+        response_stream = await _client.aio.models.generate_content_stream(
             model=GEMINI_MODEL,
             contents=user_message,
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM_INSTRUCTION,
             ),
-        ):
+        )
+        async for chunk in response_stream:
             token: str = chunk.text if chunk.text else ""
             if token:
                 full_response_parts.append(token)

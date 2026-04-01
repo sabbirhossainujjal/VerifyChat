@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     message_id TEXT NOT NULL REFERENCES messages(id),
     claim_id TEXT NOT NULL REFERENCES claims(id),
     predicted_inaccurate BOOLEAN NOT NULL,
+    prediction_label TEXT CHECK(prediction_label IN ('accurate', 'neutral', 'false')),
     reasoning TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

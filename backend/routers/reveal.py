@@ -40,7 +40,7 @@ async def reveal(request: RevealRequest) -> RevealResponse:
         # Load student predictions for this message
         async with db.execute(
             """
-            SELECT claim_id, predicted_inaccurate
+            SELECT claim_id, predicted_inaccurate, prediction_label
             FROM predictions
             WHERE message_id = ? AND session_id = ?
             """,
@@ -48,13 +48,17 @@ async def reveal(request: RevealRequest) -> RevealResponse:
         ) as cursor:
             prediction_rows = await cursor.fetchall()
 
-    # Build lookup: claim_id -> predicted_inaccurate
+    # Build lookups
     student_predictions: dict[str, bool] = {
         row["claim_id"]: bool(row["predicted_inaccurate"])
         for row in prediction_rows
     }
+    student_labels: dict[str, str] = {
+        row["claim_id"]: (row["prediction_label"] or ("false" if row["predicted_inaccurate"] else "neutral"))
+        for row in prediction_rows
+    }
 
-    # Compute accuracy sets
+    # Precision/recall/F1 — detection metric for catching unsupported claims
     system_flagged: set[str] = {
         row["id"] for row in claim_rows
         if row["verdict"] == "unsupported"
@@ -72,11 +76,22 @@ async def reveal(request: RevealRequest) -> RevealResponse:
         else 0.0
     )
 
+    # Overall correct: student matched verdict (excluding neutral predictions and insufficient_evidence)
+    correct_predictions = sum(
+        1 for row in claim_rows
+        if row["verdict"] != "insufficient_evidence"
+        and student_labels.get(row["id"], "neutral") != "neutral"
+        and (
+            (student_labels[row["id"]] == "accurate" and row["verdict"] == "supported")
+            or (student_labels[row["id"]] == "false" and row["verdict"] == "unsupported")
+        )
+    )
+
     accuracy = AccuracyMetrics(
         precision=precision,
         recall=recall,
         f1=f1,
-        correct_predictions=true_positives,
+        correct_predictions=correct_predictions,
         total_flagged_by_student=len(student_flagged),
         total_unsupported_by_system=len(system_flagged),
     )

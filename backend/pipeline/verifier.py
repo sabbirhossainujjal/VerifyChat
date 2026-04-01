@@ -1,6 +1,5 @@
-"""Stage 5: Verify each claim against retrieved evidence."""
+"""Stage 5: Verify all claims against retrieved evidence (batched, single API call)."""
 
-import asyncio
 import json
 import re
 
@@ -13,15 +12,19 @@ _client = genai.Client(api_key=GEMINI_API_KEY)
 
 _SYSTEM_PROMPT = (
     "You are an expert fact-checker.\n\n"
-    "Given a factual claim and web evidence, determine whether the claim is supported.\n\n"
-    "Respond ONLY with a JSON object — no other text:\n"
-    "{\n"
-    '  "verdict": "supported" | "unsupported" | "insufficient_evidence",\n'
-    '  "confidence": <float 0.0–1.0>,\n'
-    '  "explanation": "<1–2 sentence explanation citing specific evidence>",\n'
-    '  "key_evidence": "<most relevant quote or fact from the evidence>"\n'
-    "}\n\n"
-    'Rules:\n'
+    "You will receive a numbered list of factual claims, each with web evidence. "
+    "For each claim, determine whether it is supported by the evidence.\n\n"
+    "Return ONLY a JSON array (one object per claim, in the same order) — no other text:\n"
+    "[\n"
+    "  {\n"
+    '    "verdict": "supported" | "unsupported" | "insufficient_evidence",\n'
+    '    "confidence": <float 0.0–1.0>,\n'
+    '    "explanation": "<1–2 sentence explanation citing specific evidence>",\n'
+    '    "key_evidence": "<most relevant quote or fact from the evidence>"\n'
+    "  },\n"
+    "  ...\n"
+    "]\n\n"
+    "Rules:\n"
     '- "supported": evidence clearly confirms the claim\n'
     '- "unsupported": evidence clearly contradicts the claim\n'
     '- "insufficient_evidence": evidence is absent, ambiguous, or too weak to decide'
@@ -42,19 +45,31 @@ def _strip_fences(text: str) -> str:
     return text.strip()
 
 
-async def _verify_one_claim(claim: dict) -> dict:
-    """Verify a single *claim* dict against its attached sources."""
-    sources: list[dict] = claim.get("sources", [])
-    evidence_text = (
-        "\n\n".join(
-            f"Source {i + 1}: {s.get('title', '')}\n{s.get('snippet', '')}\nURL: {s.get('url', '')}"
-            for i, s in enumerate(sources)
-        )
-        if sources
-        else "No evidence retrieved."
-    )
+def _build_prompt(claims: list[dict]) -> str:
+    parts: list[str] = []
+    for i, claim in enumerate(claims):
+        sources: list[dict] = claim.get("sources", [])
+        if sources:
+            evidence = "\n".join(
+                f"  Source {j + 1}: {s.get('title', '')}\n  {s.get('snippet', '')}\n  URL: {s.get('url', '')}"
+                for j, s in enumerate(sources)
+            )
+        else:
+            evidence = "  No evidence retrieved."
+        parts.append(f"Claim {i}:\n{claim['claim']}\nEvidence:\n{evidence}")
+    return "\n\n---\n\n".join(parts)
 
-    prompt = f"Claim: {claim['claim']}\n\nEvidence:\n{evidence_text}"
+
+async def verify_claims(claims: list[dict]) -> list[dict]:
+    """Verify all *claims* in a single API call.
+
+    Returns the enriched list. Failed verifications receive
+    ``insufficient_evidence`` so the pipeline continues.
+    """
+    if not claims:
+        return []
+
+    prompt = _build_prompt(claims)
 
     try:
         response = await _client.aio.models.generate_content(
@@ -65,41 +80,25 @@ async def _verify_one_claim(claim: dict) -> dict:
             ),
         )
         raw = _strip_fences(response.text)
-        parsed = json.loads(raw)
-
-        verdict = parsed.get("verdict", "insufficient_evidence")
-        if verdict not in ("supported", "unsupported", "insufficient_evidence"):
-            verdict = "insufficient_evidence"
-
-        return {
-            **claim,
-            "verdict": verdict,
-            "confidence": float(parsed.get("confidence", 0.5)),
-            "explanation": parsed.get("explanation", ""),
-            "key_evidence": parsed.get("key_evidence", ""),
-        }
+        results: list[dict] = json.loads(raw)
     except Exception:
-        return {**claim, **_FALLBACK}
-
-
-async def verify_claims(claims: list[dict]) -> list[dict]:
-    """Verify all *claims* in parallel.
-
-    Returns the enriched list. Failed verifications receive
-    ``insufficient_evidence`` so the pipeline continues.
-    """
-    if not claims:
-        return []
-
-    results = await asyncio.gather(
-        *[_verify_one_claim(c) for c in claims],
-        return_exceptions=True,
-    )
+        results = []
 
     verified: list[dict] = []
-    for original, result in zip(claims, results):
-        if isinstance(result, Exception):
-            verified.append({**original, **_FALLBACK})
+    for i, claim in enumerate(claims):
+        if i < len(results) and isinstance(results[i], dict):
+            r = results[i]
+            verdict = r.get("verdict", "insufficient_evidence")
+            if verdict not in ("supported", "unsupported", "insufficient_evidence"):
+                verdict = "insufficient_evidence"
+            verified.append({
+                **claim,
+                "verdict": verdict,
+                "confidence": float(r.get("confidence", 0.5)),
+                "explanation": r.get("explanation", ""),
+                "key_evidence": r.get("key_evidence", ""),
+            })
         else:
-            verified.append(result)
+            verified.append({**claim, **_FALLBACK})
+
     return verified
