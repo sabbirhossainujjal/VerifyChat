@@ -166,7 +166,7 @@ export default function App() {
           />
         </div>
 
-        <div onMouseEnter={() => handlePanelFocus('verification')}>
+        <div className="h-full" onMouseEnter={() => handlePanelFocus('verification')}>
           <VerificationPanel
             state={verifyState}
             claims={claims}

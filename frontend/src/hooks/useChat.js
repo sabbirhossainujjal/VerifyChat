@@ -46,8 +46,9 @@ export function useChat(sessionId, onResponseComplete, logEvent) {
             continue; // skip malformed JSON
           }
           if (data.done) {
+            if (data.error) throw new Error(data.error);
             messageId = data.message_id;
-            fullResponse = data.full_response;
+            fullResponse = data.full_response || '';
             setIsStreaming(false);
             logEvent('response_received', { response_length: fullResponse.length, message_id: messageId });
             onResponseComplete(messageId, fullResponse);

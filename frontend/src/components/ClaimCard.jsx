@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 
 const VERDICT_CONFIG = {
   supported: {
@@ -24,21 +24,28 @@ const VERDICT_CONFIG = {
   },
 };
 
-// Predict mode: shows claim + sources + checkbox for prediction
-function PredictCard({ claim, checked, reasoning, onCheckChange, onReasoningChange, onExpand, onLinkClick }) {
+// Predict mode: shows claim + sources + 3-way prediction toggle
+function PredictCard({ claim, prediction, onPredictionChange, onExpand, onLinkClick }) {
+  // Track whether onExpand has been fired for this card
   const expandedRef = useRef(false);
 
-  const handleCheckChange = (e) => {
-    if (!expandedRef.current) {
+  const handleButtonClick = (value) => {
+    if (!expandedRef.current && value !== 'neutral') {
       expandedRef.current = true;
       onExpand(claim.id);
     }
-    onCheckChange(claim.id, e.target.checked);
+    onPredictionChange(claim.id, value);
   };
 
   const handleLinkClick = (url) => {
     onLinkClick(claim.id, url);
   };
+
+  const buttons = [
+    { value: 'accurate', label: 'Accurate', selectedClass: 'bg-green-100 text-green-700 border-green-300' },
+    { value: 'neutral',  label: 'Neutral',  selectedClass: 'bg-gray-100 text-gray-600' },
+    { value: 'false',    label: 'False',    selectedClass: 'bg-red-100 text-red-700 border-red-300' },
+  ];
 
   return (
     <div className="rounded-lg border border-gray-200 p-4 bg-white">
@@ -62,35 +69,32 @@ function PredictCard({ claim, checked, reasoning, onCheckChange, onReasoningChan
         </div>
       )}
 
-      <label className="flex items-start gap-2 cursor-pointer group">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={handleCheckChange}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-        />
-        <span className="text-sm text-gray-700 group-hover:text-gray-900 select-none">
-          I think this claim might be inaccurate
-        </span>
-      </label>
-
-      {checked && (
-        <div className="mt-2 ml-6">
-          <textarea
-            value={reasoning}
-            onChange={(e) => onReasoningChange(claim.id, e.target.value)}
-            placeholder="Optional: why do you think this is inaccurate?"
-            rows={2}
-            className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 placeholder-gray-400"
-          />
-        </div>
-      )}
+      <div className="flex rounded-lg overflow-hidden border border-gray-200 mt-3">
+        {buttons.map((btn, idx) => {
+          const isSelected = prediction === btn.value;
+          const isLast = idx === buttons.length - 1;
+          return (
+            <button
+              key={btn.value}
+              type="button"
+              onClick={() => handleButtonClick(btn.value)}
+              className={[
+                'flex-1 py-1.5 text-xs font-medium transition-colors',
+                isSelected ? btn.selectedClass : 'bg-white text-gray-400 hover:bg-gray-50',
+                !isLast ? 'border-r border-gray-200' : '',
+              ].join(' ')}
+            >
+              {btn.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // Reveal mode: shows verdict + explanation + prediction match
-function RevealCard({ claim, verdict, studentPredicted, logEvent }) {
+function RevealCard({ claim, verdict, studentPrediction, logEvent }) {
   const [expanded, setExpanded] = useState(false);
   const config = VERDICT_CONFIG[verdict?.verdict] || VERDICT_CONFIG['insufficient_evidence'];
 
@@ -101,9 +105,13 @@ function RevealCard({ claim, verdict, studentPredicted, logEvent }) {
     setExpanded(prev => !prev);
   };
 
-  const studentWasCorrect = verdict
-    ? (studentPredicted === (verdict.verdict === 'unsupported'))
-    : null;
+  // No badge for: neutral prediction, or insufficient_evidence verdict (system couldn't determine truth)
+  const studentWasCorrect =
+    verdict && studentPrediction !== 'neutral' && verdict.verdict !== 'insufficient_evidence'
+      ? (studentPrediction === 'false'
+          ? verdict.verdict === 'unsupported'
+          : verdict.verdict === 'supported')
+      : null;
 
   return (
     <div className={`rounded-lg border p-4 ${config.bgClass} ${config.borderClass}`}>
@@ -116,12 +124,24 @@ function RevealCard({ claim, verdict, studentPredicted, logEvent }) {
             <span className={`text-xs font-semibold uppercase tracking-wide ${config.textClass}`}>
               {config.label}
             </span>
+            {verdict?.confidence != null && (
+              <span className="text-xs text-gray-400 tabular-nums">
+                {Math.round(verdict.confidence * 100)}% confident
+              </span>
+            )}
             {studentWasCorrect !== null && (
-              <span className={`text-xs font-medium ml-auto ${studentWasCorrect ? 'text-green-700' : 'text-red-600'}`}>
-                {studentWasCorrect ? '\u2713 correct prediction' : '\u2717 incorrect prediction'}
+              <span className={`text-xs font-semibold ml-auto px-2 py-0.5 rounded-full ${studentWasCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                {studentWasCorrect ? '\u2713 correct' : '\u2717 incorrect'}
               </span>
             )}
           </div>
+
+          {studentPrediction !== 'neutral' && (
+            <p className="text-xs text-gray-500 mb-1">
+              You said: {studentPrediction === 'accurate' ? 'Accurate' : 'False'}
+            </p>
+          )}
+
           <p className="text-sm text-gray-800 leading-relaxed">{claim.text}</p>
 
           {verdict?.explanation && (
@@ -166,25 +186,21 @@ export default function ClaimCard({
   mode = 'predict',
   claim,
   // predict mode
-  checked = false,
-  reasoning = '',
-  onCheckChange,
-  onReasoningChange,
+  prediction = 'neutral',
+  onPredictionChange,
   onExpand,
   onLinkClick,
   // reveal mode
   verdict,
-  studentPredicted = false,
+  studentPrediction = 'neutral',
   logEvent,
 }) {
   if (mode === 'predict') {
     return (
       <PredictCard
         claim={claim}
-        checked={checked}
-        reasoning={reasoning}
-        onCheckChange={onCheckChange}
-        onReasoningChange={onReasoningChange}
+        prediction={prediction}
+        onPredictionChange={onPredictionChange || (() => {})}
         onExpand={onExpand || (() => {})}
         onLinkClick={onLinkClick || (() => {})}
       />
@@ -195,7 +211,7 @@ export default function ClaimCard({
     <RevealCard
       claim={claim}
       verdict={verdict}
-      studentPredicted={studentPredicted}
+      studentPrediction={studentPrediction}
       logEvent={logEvent || (() => {})}
     />
   );

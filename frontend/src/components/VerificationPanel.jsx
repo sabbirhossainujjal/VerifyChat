@@ -21,7 +21,7 @@ export default function VerificationPanel({
   logEvent,
 }) {
   return (
-    <div className="w-[420px] border-l border-gray-200 flex flex-col overflow-hidden bg-white">
+    <div className="h-full w-[420px] border-l border-gray-200 flex flex-col overflow-hidden bg-white">
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 shrink-0">
         <h1 className="text-xs font-semibold uppercase tracking-widest text-gray-500">
           Fact Verification

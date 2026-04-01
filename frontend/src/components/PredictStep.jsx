@@ -2,26 +2,19 @@ import { useState, useCallback } from 'react';
 import ClaimCard from './ClaimCard';
 
 export default function PredictStep({ claims, onSubmit, logEvent }) {
-  // Map of claim_id -> { checked: bool, reasoning: string }
+  // Map of claim_id -> { prediction: 'accurate' | 'neutral' | 'false' }
   const [selections, setSelections] = useState(() =>
-    Object.fromEntries(claims.map(c => [c.id, { checked: false, reasoning: '' }]))
+    Object.fromEntries(claims.map(c => [c.id, { prediction: 'neutral' }]))
   );
-  // Track whether the student has interacted with at least one checkbox
+  // Track whether the student has interacted with at least one button
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  const handleCheckChange = useCallback((claimId, checked) => {
+  const handlePredictionChange = useCallback((claimId, prediction) => {
     setSelections(prev => ({
       ...prev,
-      [claimId]: { ...prev[claimId], checked },
+      [claimId]: { prediction },
     }));
     setHasInteracted(true);
-  }, []);
-
-  const handleReasoningChange = useCallback((claimId, value) => {
-    setSelections(prev => ({
-      ...prev,
-      [claimId]: { ...prev[claimId], reasoning: value },
-    }));
   }, []);
 
   const handleExpand = useCallback((claimId) => {
@@ -35,8 +28,9 @@ export default function PredictStep({ claims, onSubmit, logEvent }) {
   const handleReveal = () => {
     const predictions = claims.map(c => ({
       claim_id: c.id,
-      predicted_inaccurate: selections[c.id]?.checked ?? false,
-      reasoning: selections[c.id]?.reasoning ?? '',
+      predicted_inaccurate: (selections[c.id]?.prediction ?? 'neutral') === 'false',
+      prediction_label: selections[c.id]?.prediction ?? 'neutral',
+      reasoning: '',
     }));
     onSubmit(predictions);
   };
@@ -48,7 +42,7 @@ export default function PredictStep({ claims, onSubmit, logEvent }) {
           We found {claims.length} claim{claims.length !== 1 ? 's' : ''} to verify.
         </h2>
         <p className="text-xs text-gray-500 mt-1 leading-snug">
-          Before seeing results, which claims do <strong>you</strong> think might be inaccurate?
+          Rate each claim: do you think it's accurate, false, or are you unsure?
           You can review the sources below to make an informed prediction.
         </p>
       </div>
@@ -59,10 +53,8 @@ export default function PredictStep({ claims, onSubmit, logEvent }) {
             key={claim.id}
             mode="predict"
             claim={claim}
-            checked={selections[claim.id]?.checked ?? false}
-            reasoning={selections[claim.id]?.reasoning ?? ''}
-            onCheckChange={handleCheckChange}
-            onReasoningChange={handleReasoningChange}
+            prediction={selections[claim.id]?.prediction ?? 'neutral'}
+            onPredictionChange={handlePredictionChange}
             onExpand={handleExpand}
             onLinkClick={handleLinkClick}
           />
@@ -72,7 +64,7 @@ export default function PredictStep({ claims, onSubmit, logEvent }) {
       <div className="px-4 py-3 border-t border-gray-200 bg-white">
         {!hasInteracted && (
           <p className="text-xs text-gray-400 mb-2">
-            Interact with at least one checkbox to continue (selecting none is valid).
+            Rate at least one claim to continue.
           </p>
         )}
         <button
