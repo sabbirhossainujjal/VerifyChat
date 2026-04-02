@@ -2,7 +2,7 @@ services:
   - type: web
     name: verifychat-backend
     runtime: python
-    buildCommand: pip install uv && uv pip install --system .
+    buildCommand: pip install .
     startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     plan: free
     envVars:
