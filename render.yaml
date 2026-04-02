@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: verifychat-backend
+    runtime: python
+    buildCommand: pip install uv && uv pip install --system .
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
