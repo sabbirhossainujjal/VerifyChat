@@ -1,15 +1,17 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-import aiosqlite
+import asyncpg
 
 from backend.config import DATABASE_URL
+
+_pool: asyncpg.Pool | None = None
 
 _CREATE_SESSIONS = """
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     participant_id TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     topic TEXT
 );
 """
@@ -20,7 +22,7 @@ CREATE TABLE IF NOT EXISTS messages (
     session_id TEXT NOT NULL REFERENCES sessions(id),
     role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
     content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 """
 
@@ -39,7 +41,7 @@ CREATE TABLE IF NOT EXISTS claims (
     verdict TEXT CHECK(verdict IN ('supported', 'unsupported', 'insufficient_evidence')),
     confidence REAL,
     explanation TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 """
 
@@ -52,7 +54,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     predicted_inaccurate BOOLEAN NOT NULL,
     prediction_label TEXT CHECK(prediction_label IN ('accurate', 'neutral', 'false')),
     reasoning TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 """
 
@@ -67,36 +69,42 @@ CREATE TABLE IF NOT EXISTS prediction_scores (
     correct_predictions INTEGER,
     total_flagged_by_student INTEGER,
     total_unsupported_by_system INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 """
 
 _CREATE_INTERACTION_EVENTS = """
 CREATE TABLE IF NOT EXISTS interaction_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id BIGSERIAL PRIMARY KEY,
     session_id TEXT NOT NULL REFERENCES sessions(id),
     event_type TEXT NOT NULL,
     event_data TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    timestamp TIMESTAMPTZ DEFAULT NOW()
 );
 """
 
 
 async def init_db() -> None:
-    """Create all tables if they do not exist."""
-    async with aiosqlite.connect(DATABASE_URL) as db:
-        await db.execute(_CREATE_SESSIONS)
-        await db.execute(_CREATE_MESSAGES)
-        await db.execute(_CREATE_CLAIMS)
-        await db.execute(_CREATE_PREDICTIONS)
-        await db.execute(_CREATE_PREDICTION_SCORES)
-        await db.execute(_CREATE_INTERACTION_EVENTS)
-        await db.commit()
+    """Create the connection pool and all tables if they do not exist."""
+    global _pool
+    _pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
+    async with _pool.acquire() as conn:
+        await conn.execute(_CREATE_SESSIONS)
+        await conn.execute(_CREATE_MESSAGES)
+        await conn.execute(_CREATE_CLAIMS)
+        await conn.execute(_CREATE_PREDICTIONS)
+        await conn.execute(_CREATE_PREDICTION_SCORES)
+        await conn.execute(_CREATE_INTERACTION_EVENTS)
+
+
+async def close_db() -> None:
+    """Close the connection pool."""
+    if _pool:
+        await _pool.close()
 
 
 @asynccontextmanager
-async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
-    """Yield an aiosqlite connection."""
-    async with aiosqlite.connect(DATABASE_URL) as db:
-        db.row_factory = aiosqlite.Row
-        yield db
+async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
+    """Yield an asyncpg connection from the pool."""
+    async with _pool.acquire() as conn:
+        yield conn

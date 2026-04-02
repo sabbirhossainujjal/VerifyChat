@@ -26,28 +26,28 @@ async def verify(request: VerifyRequest) -> VerifyResponse:
 
     claim_results: list[ClaimResult] = []
 
-    async with get_db() as db:
-        for item in pipeline_results:
-            claim_id = uuid.uuid4().hex[:12]
+    async with get_db() as conn:
+        async with conn.transaction():
+            for item in pipeline_results:
+                claim_id = uuid.uuid4().hex[:12]
 
-            sources: list[dict] = item.get("sources", [])
-            top_source = sources[0] if sources else {}
-            source_url = top_source.get("url")
-            source_title = top_source.get("title")
-            source_snippet = top_source.get("snippet")
+                sources: list[dict] = item.get("sources", [])
+                top_source = sources[0] if sources else {}
+                source_url = top_source.get("url")
+                source_title = top_source.get("title")
+                source_snippet = top_source.get("snippet")
 
-            queries_json = json.dumps(item.get("search_queries", []))
+                queries_json = json.dumps(item.get("search_queries", []))
 
-            await db.execute(
-                """
-                INSERT INTO claims (
-                    id, message_id, session_id, claim_text, original_sentence,
-                    is_checkworthy, search_queries,
-                    source_url, source_title, source_snippet,
-                    verdict, confidence, explanation
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
+                await conn.execute(
+                    """
+                    INSERT INTO claims (
+                        id, message_id, session_id, claim_text, original_sentence,
+                        is_checkworthy, search_queries,
+                        source_url, source_title, source_snippet,
+                        verdict, confidence, explanation
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                    """,
                     claim_id,
                     request.message_id,
                     request.session_id,
@@ -61,19 +61,16 @@ async def verify(request: VerifyRequest) -> VerifyResponse:
                     item.get("verdict", "insufficient_evidence"),
                     item.get("confidence", 0.0),
                     item.get("explanation", ""),
-                ),
-            )
-
-            claim_results.append(
-                ClaimResult(
-                    id=claim_id,
-                    text=item["claim"],
-                    source_url=source_url,
-                    source_title=source_title,
-                    source_snippet=source_snippet,
                 )
-            )
 
-        await db.commit()
+                claim_results.append(
+                    ClaimResult(
+                        id=claim_id,
+                        text=item["claim"],
+                        source_url=source_url,
+                        source_title=source_title,
+                        source_snippet=source_snippet,
+                    )
+                )
 
     return VerifyResponse(claims=claim_results)

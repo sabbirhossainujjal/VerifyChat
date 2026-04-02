@@ -30,12 +30,11 @@ async def _stream_chat(session_id: str, user_message: str) -> AsyncGenerator[str
     message_id = uuid.uuid4().hex[:12]
 
     # Persist user message
-    async with get_db() as db:
-        await db.execute(
-            "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
-            (uuid.uuid4().hex[:12], session_id, "user", user_message),
+    async with get_db() as conn:
+        await conn.execute(
+            "INSERT INTO messages (id, session_id, role, content) VALUES ($1, $2, $3, $4)",
+            uuid.uuid4().hex[:12], session_id, "user", user_message,
         )
-        await db.commit()
 
     full_response_parts: list[str] = []
 
@@ -61,12 +60,11 @@ async def _stream_chat(session_id: str, user_message: str) -> AsyncGenerator[str
     full_response = "".join(full_response_parts)
 
     # Persist assistant message
-    async with get_db() as db:
-        await db.execute(
-            "INSERT INTO messages (id, session_id, role, content) VALUES (?, ?, ?, ?)",
-            (message_id, session_id, "assistant", full_response),
+    async with get_db() as conn:
+        await conn.execute(
+            "INSERT INTO messages (id, session_id, role, content) VALUES ($1, $2, $3, $4)",
+            message_id, session_id, "assistant", full_response,
         )
-        await db.commit()
 
     final_payload = json.dumps({
         "token": "",

@@ -18,18 +18,17 @@ router = APIRouter()
 @router.post("/reveal", response_model=RevealResponse)
 async def reveal(request: RevealRequest) -> RevealResponse:
     """Load saved verdicts, compute prediction accuracy, persist scores."""
-    async with get_db() as db:
+    async with get_db() as conn:
         # Load all claims for this message (verdicts were stored during /verify)
-        async with db.execute(
+        claim_rows = await conn.fetch(
             """
             SELECT id, claim_text, verdict, confidence, explanation,
                    source_url, source_title, source_snippet
             FROM claims
-            WHERE message_id = ? AND session_id = ?
+            WHERE message_id = $1 AND session_id = $2
             """,
-            (request.message_id, request.session_id),
-        ) as cursor:
-            claim_rows = await cursor.fetchall()
+            request.message_id, request.session_id,
+        )
 
         if not claim_rows:
             raise HTTPException(
@@ -38,15 +37,14 @@ async def reveal(request: RevealRequest) -> RevealResponse:
             )
 
         # Load student predictions for this message
-        async with db.execute(
+        prediction_rows = await conn.fetch(
             """
             SELECT claim_id, predicted_inaccurate, prediction_label
             FROM predictions
-            WHERE message_id = ? AND session_id = ?
+            WHERE message_id = $1 AND session_id = $2
             """,
-            (request.message_id, request.session_id),
-        ) as cursor:
-            prediction_rows = await cursor.fetchall()
+            request.message_id, request.session_id,
+        )
 
     # Build lookups
     student_predictions: dict[str, bool] = {
@@ -121,8 +119,8 @@ async def reveal(request: RevealRequest) -> RevealResponse:
 
     # Persist prediction score
     score_id = uuid.uuid4().hex[:12]
-    async with get_db() as db:
-        await db.execute(
+    async with get_db() as conn:
+        await conn.execute(
             """
             INSERT INTO prediction_scores (
                 id, session_id, message_id,
@@ -130,20 +128,17 @@ async def reveal(request: RevealRequest) -> RevealResponse:
                 correct_predictions,
                 total_flagged_by_student,
                 total_unsupported_by_system
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             """,
-            (
-                score_id,
-                request.session_id,
-                request.message_id,
-                accuracy.precision,
-                accuracy.recall,
-                accuracy.f1,
-                accuracy.correct_predictions,
-                accuracy.total_flagged_by_student,
-                accuracy.total_unsupported_by_system,
-            ),
+            score_id,
+            request.session_id,
+            request.message_id,
+            accuracy.precision,
+            accuracy.recall,
+            accuracy.f1,
+            accuracy.correct_predictions,
+            accuracy.total_flagged_by_student,
+            accuracy.total_unsupported_by_system,
         )
-        await db.commit()
 
     return RevealResponse(verdicts=verdicts, accuracy=accuracy)
