@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY_2: str = os.environ.get("GEMINI_API_KEY_2", "")
+GEMINI_API_KEYS: list[str] = [k for k in [GEMINI_API_KEY, GEMINI_API_KEY_2] if k]
 SERPER_API_KEY: str = os.environ.get("SERPER_API_KEY", "")
 DATABASE_URL: str = os.environ.get("DATABASE_URL", "postgresql://localhost/verifychat")
 

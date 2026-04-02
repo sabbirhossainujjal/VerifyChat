@@ -3,12 +3,9 @@
 import json
 import re
 
-from google import genai
 from google.genai import types
 
-from backend.config import GEMINI_API_KEY, GEMINI_MODEL
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
+from backend import gemini
 
 _SYSTEM_PROMPT = (
     "You are an expert fact-checker.\n\n"
@@ -72,8 +69,7 @@ async def verify_claims(claims: list[dict]) -> list[dict]:
     prompt = _build_prompt(claims)
 
     try:
-        response = await _client.aio.models.generate_content(
-            model=GEMINI_MODEL,
+        response = await gemini.generate_content(
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM_PROMPT,

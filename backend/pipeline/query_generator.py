@@ -3,12 +3,9 @@
 import json
 import re
 
-from google import genai
 from google.genai import types
 
-from backend.config import GEMINI_API_KEY, GEMINI_MODEL
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
+from backend import gemini
 
 _SYSTEM_PROMPT = (
     "You are a search query specialist.\n\n"
@@ -39,8 +36,7 @@ async def generate_queries(claims: list[dict]) -> list[dict]:
     numbered = "\n".join(f"{i}. {c['claim']}" for i, c in enumerate(claims))
 
     try:
-        response = await _client.aio.models.generate_content(
-            model=GEMINI_MODEL,
+        response = await gemini.generate_content(
             contents=f"Claims:\n{numbered}",
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM_PROMPT,

@@ -6,14 +6,11 @@ from typing import AsyncGenerator
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from google import genai
 from google.genai import types
 
-from backend.config import GEMINI_API_KEY, GEMINI_MODEL
+from backend import gemini
 from backend.database import get_db
 from backend.models import ChatRequest
-
-_client = genai.Client(api_key=GEMINI_API_KEY)
 
 router = APIRouter()
 
@@ -39,8 +36,7 @@ async def _stream_chat(session_id: str, user_message: str) -> AsyncGenerator[str
     full_response_parts: list[str] = []
 
     try:
-        response_stream = await _client.aio.models.generate_content_stream(
-            model=GEMINI_MODEL,
+        response_stream = await gemini.generate_content_stream(
             contents=user_message,
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM_INSTRUCTION,
