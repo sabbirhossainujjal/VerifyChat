@@ -56,13 +56,20 @@ async def reveal(request: RevealRequest) -> RevealResponse:
         for row in prediction_rows
     }
 
-    # Precision/recall/F1 — detection metric for catching unsupported claims
+    # Precision/recall/F1 — detection metric for catching unsupported claims.
+    # Only claims with a definitive verdict (supported/unsupported) are eligible;
+    # insufficient_evidence claims are excluded so they don't skew precision.
+    eligible_ids: set[str] = {
+        row["id"] for row in claim_rows
+        if row["verdict"] in ("supported", "unsupported")
+    }
     system_flagged: set[str] = {
         row["id"] for row in claim_rows
         if row["verdict"] == "unsupported"
     }
     student_flagged: set[str] = {
-        cid for cid, flag in student_predictions.items() if flag
+        row["claim_id"] for row in prediction_rows
+        if row["prediction_label"] == "false" and row["claim_id"] in eligible_ids
     }
     true_positives = len(system_flagged & student_flagged)
 
