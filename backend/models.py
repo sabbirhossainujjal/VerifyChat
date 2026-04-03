@@ -112,3 +112,31 @@ class SessionCreateRequest(BaseModel):
 
 class SessionCreateResponse(BaseModel):
     session_id: str
+
+
+# ---------------------------------------------------------------------------
+# Standard Chat
+# ---------------------------------------------------------------------------
+
+class StandardChatRequest(BaseModel):
+    session_id: str
+    message: str
+
+
+class GuessRequest(BaseModel):
+    session_id: str
+    message_id: str
+    guess_text: str
+
+
+class GuessResponse(BaseModel):
+    success: bool
+
+
+class SessionModeRequest(BaseModel):
+    session_id: str
+    mode: str  # 'standard' or 'verifychat'
+
+
+class SessionModeResponse(BaseModel):
+    success: bool

@@ -83,6 +83,38 @@ CREATE TABLE IF NOT EXISTS interaction_events (
 );
 """
 
+_CREATE_SESSION_MODE_EVENTS = """
+CREATE TABLE IF NOT EXISTS session_mode_events (
+    id          TEXT PRIMARY KEY,
+    session_id  TEXT NOT NULL REFERENCES sessions(id),
+    mode        TEXT NOT NULL CHECK (mode IN ('standard', 'verifychat')),
+    switched_at TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
+_CREATE_HALLUCINATED_FACTS = """
+CREATE TABLE IF NOT EXISTS hallucinated_facts (
+    id           TEXT PRIMARY KEY,
+    session_id   TEXT NOT NULL,
+    message_id   TEXT NOT NULL,
+    fact_index   SMALLINT NOT NULL CHECK (fact_index IN (0, 1)),
+    injected     TEXT NOT NULL,
+    correct      TEXT NOT NULL,
+    created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
+_CREATE_HALLUCINATION_GUESSES = """
+CREATE TABLE IF NOT EXISTS hallucination_guesses (
+    id           TEXT PRIMARY KEY,
+    session_id   TEXT NOT NULL,
+    message_id   TEXT NOT NULL UNIQUE,
+    guess_text   TEXT NOT NULL,
+    eval_result  JSONB,
+    submitted_at TIMESTAMPTZ DEFAULT NOW()
+);
+"""
+
 
 async def init_db() -> None:
     """Create the connection pool and all tables if they do not exist."""
@@ -95,6 +127,12 @@ async def init_db() -> None:
         await conn.execute(_CREATE_PREDICTIONS)
         await conn.execute(_CREATE_PREDICTION_SCORES)
         await conn.execute(_CREATE_INTERACTION_EVENTS)
+        await conn.execute(_CREATE_SESSION_MODE_EVENTS)
+        await conn.execute(_CREATE_HALLUCINATED_FACTS)
+        await conn.execute(_CREATE_HALLUCINATION_GUESSES)
+        await conn.execute(
+            "ALTER TABLE sessions ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'standard'"
+        )
 
 
 async def close_db() -> None:

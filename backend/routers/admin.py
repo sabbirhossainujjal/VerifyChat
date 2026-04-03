@@ -24,6 +24,9 @@ async def export_all() -> dict:
         predictions = await conn.fetch("SELECT * FROM predictions ORDER BY created_at")
         scores = await conn.fetch("SELECT * FROM prediction_scores ORDER BY created_at")
         events = await conn.fetch("SELECT * FROM interaction_events ORDER BY timestamp")
+        session_mode_events = await conn.fetch("SELECT * FROM session_mode_events ORDER BY switched_at")
+        hallucinated_facts = await conn.fetch("SELECT * FROM hallucinated_facts ORDER BY created_at")
+        hallucination_guesses = await conn.fetch("SELECT * FROM hallucination_guesses ORDER BY submitted_at")
 
     return {
         "exported_at": datetime.datetime.utcnow().isoformat() + "Z",
@@ -33,4 +36,7 @@ async def export_all() -> dict:
         "predictions": [_row_to_dict(r) for r in predictions],
         "prediction_scores": [_row_to_dict(r) for r in scores],
         "interaction_events": [_row_to_dict(r) for r in events],
+        "session_mode_events": [_row_to_dict(r) for r in session_mode_events],
+        "hallucinated_facts": [_row_to_dict(r) for r in hallucinated_facts],
+        "hallucination_guesses": [_row_to_dict(r) for r in hallucination_guesses],
     }

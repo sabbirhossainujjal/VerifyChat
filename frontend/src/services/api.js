@@ -41,3 +41,24 @@ export const logEvent = (sessionId, eventType, eventData = {}) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, event_type: eventType, event_data: eventData, timestamp: new Date().toISOString() })
   }).catch(() => {});  // silent failure
+
+export const sendStandardChatMessage = (sessionId, message) =>
+  fetch(`${BASE}/api/chat/standard`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, message })
+  });  // returns raw Response for streaming
+
+export const submitGuess = (sessionId, messageId, guessText) =>
+  fetch(`${BASE}/api/guess`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, message_id: messageId, guess_text: guessText })
+  }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });
+
+export const setSessionMode = (sessionId, mode) =>
+  fetch(`${BASE}/api/session/mode`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, mode })
+  }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); });

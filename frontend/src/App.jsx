@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef } from 'react';
-import { createSession } from './services/api';
+import { createSession, setSessionMode, submitGuess } from './services/api';
 import { useEventLogger } from './hooks/useEventLogger';
 import { useChat } from './hooks/useChat';
 import { useVerification } from './hooks/useVerification';
+import { useStandardChat } from './hooks/useStandardChat';
 import SessionBar from './components/SessionBar';
 import ChatPanel from './components/ChatPanel';
 import VerificationPanel from './components/VerificationPanel';
+import StandardChatPanel from './components/StandardChatPanel';
 
 // Entry form shown before a session is created
 function SessionForm({ onStart }) {
@@ -78,6 +80,7 @@ function SessionForm({ onStart }) {
 export default function App() {
   const [participantId, setParticipantId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+  const [mode, setMode] = useState('standard');
 
   // Tracks the predictions from PREDICT state so REVEAL can display them
   const [lastPredictions, setLastPredictions] = useState([]);
@@ -127,6 +130,13 @@ export default function App() {
     log
   );
 
+  const {
+    messages: standardMessages,
+    isStreaming: standardIsStreaming,
+    lastMessageId: standardLastMessageId,
+    sendMessage: standardSendMessage,
+  } = useStandardChat(sessionId, log);
+
   const handleSend = useCallback((text) => {
     // Reset verification panel when user starts a new question from REVEAL state
     if (verifyState === 'REVEAL') {
@@ -141,6 +151,22 @@ export default function App() {
     submitPrediction(predictions);
   }, [submitPrediction]);
 
+  const handleStandardSend = useCallback((text) => {
+    standardSendMessage(text);
+  }, [standardSendMessage]);
+
+  const handleSubmitGuess = useCallback(async (guessText, messageId) => {
+    await submitGuess(sessionId, messageId, guessText);
+  }, [sessionId]);
+
+  const handleModeSwitch = useCallback(async (newMode) => {
+    if (newMode === mode) return;
+    setMode(newMode);
+    try {
+      await setSessionMode(sessionId, newMode);
+    } catch {}  // silent failure, mode change is still logged locally
+  }, [mode, sessionId]);
+
   const handleSessionStart = (pid, sid) => {
     setParticipantId(pid);
     setSessionId(sid);
@@ -154,30 +180,69 @@ export default function App() {
     <div className="flex flex-col h-screen overflow-hidden bg-white">
       <SessionBar participantId={participantId} sessionId={sessionId} />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div
-          className="flex-1 overflow-hidden flex flex-col"
-          onMouseEnter={() => handlePanelFocus('chat')}
+      <div className="flex items-center justify-center gap-2 border-b border-gray-100 bg-white py-2 px-4">
+        <span className="text-xs text-gray-400 mr-2">Study mode:</span>
+        <button
+          onClick={() => handleModeSwitch('standard')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            mode === 'standard'
+              ? 'bg-gray-900 text-white'
+              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
         >
-          <ChatPanel
-            messages={messages}
-            isStreaming={isStreaming}
-            onSend={handleSend}
-          />
-        </div>
+          Standard Chat
+        </button>
+        <button
+          onClick={() => handleModeSwitch('verifychat')}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            mode === 'verifychat'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          VerifyChat
+        </button>
+      </div>
 
-        <div className="h-full" onMouseEnter={() => handlePanelFocus('verification')}>
-          <VerificationPanel
-            state={verifyState}
-            claims={claims}
-            verdicts={verdicts}
-            accuracy={accuracy}
-            predictions={lastPredictions}
-            error={verifyError}
-            onSubmitPredictions={handleSubmitPredictions}
-            logEvent={log}
-          />
-        </div>
+      <div className="flex flex-1 overflow-hidden">
+        {mode === 'standard' ? (
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <StandardChatPanel
+              messages={standardMessages}
+              isStreaming={standardIsStreaming}
+              lastMessageId={standardLastMessageId}
+              onSend={handleStandardSend}
+              onSubmitGuess={handleSubmitGuess}
+              sessionId={sessionId}
+            />
+          </div>
+        ) : (
+          <>
+            <div
+              className="flex-1 overflow-hidden flex flex-col"
+              onMouseEnter={() => handlePanelFocus('chat')}
+            >
+              <ChatPanel
+                messages={messages}
+                isStreaming={isStreaming}
+                onSend={handleSend}
+              />
+            </div>
+
+            <div className="h-full" onMouseEnter={() => handlePanelFocus('verification')}>
+              <VerificationPanel
+                state={verifyState}
+                claims={claims}
+                verdicts={verdicts}
+                accuracy={accuracy}
+                predictions={lastPredictions}
+                error={verifyError}
+                onSubmitPredictions={handleSubmitPredictions}
+                logEvent={log}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

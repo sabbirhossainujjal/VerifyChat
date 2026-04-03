@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.config import ALLOWED_ORIGINS
 from backend.database import close_db, init_db
-from backend.routers import admin, chat, logs, predict, reveal, sessions, verify
+from backend.routers import admin, chat, guess, logs, predict, reveal, session_mode, sessions, standard_chat, verify
 
 
 @asynccontextmanager
@@ -41,3 +41,6 @@ app.include_router(reveal.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(standard_chat.router, prefix="/api")
+app.include_router(guess.router, prefix="/api")
+app.include_router(session_mode.router, prefix="/api")
