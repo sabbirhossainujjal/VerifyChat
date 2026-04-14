@@ -26,6 +26,7 @@ export function useStandardChat(sessionId, log) {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let inMeta = false;  // suppress <META>...</META> from display
 
       while (true) {
         const { done, value } = await reader.read();
@@ -48,14 +49,27 @@ export function useStandardChat(sessionId, log) {
               }
               if (data.message_id) setLastMessageId(data.message_id);
             } else if (data.token) {
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = {
-                  role: 'assistant',
-                  content: (updated[updated.length - 1].content || '') + data.token
-                };
-                return updated;
-              });
+              let displayToken = data.token;
+
+              // Strip <META>...</META> block from displayed tokens
+              if (!inMeta && displayToken.includes('<META>')) {
+                displayToken = displayToken.split('<META>')[0];
+                inMeta = true;
+              } else if (inMeta) {
+                displayToken = '';
+                if (data.token.includes('</META>')) inMeta = false;
+              }
+
+              if (displayToken) {
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    role: 'assistant',
+                    content: (updated[updated.length - 1].content || '') + displayToken
+                  };
+                  return updated;
+                });
+              }
             }
           } catch {}
         }
