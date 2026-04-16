@@ -38,7 +38,7 @@ function SessionForm({ onStart }) {
       <div className="w-full max-w-sm bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <h1 className="text-xl font-semibold text-gray-900 mb-1">VerifyChat</h1>
         <p className="text-sm text-gray-500 mb-6">
-          HCI Study &mdash; Stevens Institute of Technology
+          Please enter your participant ID to begin.
         </p>
 
         <form onSubmit={handleSubmit} noValidate>
@@ -172,16 +172,21 @@ export default function App() {
     setSessionId(sid);
   };
 
+  const handleLogout = useCallback(() => {
+    setParticipantId(null);
+    setSessionId(null);
+    setMode('standard');
+  }, []);
+
   if (!sessionId) {
     return <SessionForm onStart={handleSessionStart} />;
   }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white">
-      <SessionBar participantId={participantId} sessionId={sessionId} />
+      <SessionBar participantId={participantId} sessionId={sessionId} onLogout={handleLogout} />
 
       <div className="flex items-center justify-center gap-2 border-b border-gray-100 bg-white py-2 px-4">
-        <span className="text-xs text-gray-400 mr-2">Study mode:</span>
         <button
           onClick={() => handleModeSwitch('standard')}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -190,7 +195,7 @@ export default function App() {
               : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          Standard Chat
+          Condition-1
         </button>
         <button
           onClick={() => handleModeSwitch('verifychat')}
@@ -200,7 +205,7 @@ export default function App() {
               : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
           }`}
         >
-          VerifyChat
+          Condition-2
         </button>
       </div>
 
