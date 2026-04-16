@@ -41,19 +41,20 @@ export default function StandardChatPanel({
           </div>
         )}
         {messages.map((msg, idx) => (
-          <ChatMessage key={idx} role={msg.role} content={msg.content} />
+          <div key={idx}>
+            <ChatMessage role={msg.role} content={msg.content} />
+            {showGuessInput && idx === messages.length - 1 && msg.role === 'assistant' && (
+              <GuessInput
+                key={lastMessageId}
+                sessionId={sessionId}
+                messageId={lastMessageId}
+                onSubmit={handleSubmitGuess}
+              />
+            )}
+          </div>
         ))}
         <div ref={bottomRef} />
       </div>
-
-      {showGuessInput && (
-        <GuessInput
-          key={lastMessageId}
-          sessionId={sessionId}
-          messageId={lastMessageId}
-          onSubmit={handleSubmitGuess}
-        />
-      )}
 
       <ChatInput onSend={onSend} disabled={isStreaming} />
     </div>
