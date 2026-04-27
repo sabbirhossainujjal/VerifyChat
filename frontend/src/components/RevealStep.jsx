@@ -24,21 +24,12 @@ const SCORE_TIERS = [
   },
 ];
 
-function metricTileClass(val) {
-  if (val >= 0.6) return 'bg-green-100 text-green-800';
-  if (val >= 0.35) return 'bg-amber-100 text-amber-800';
-  return 'bg-red-100 text-red-800';
-}
 
 function AccuracySummary({ accuracy, verdicts, predictionMap }) {
   if (!accuracy || !verdicts) return null;
 
   const correct = accuracy.correct_predictions ?? 0;
-  const precision = accuracy.precision ?? 0;
-  const recall = accuracy.recall ?? 0;
-  const f1 = accuracy.f1 ?? 0;
 
-  // Denominator: claims the student rated (non-neutral) where verdict was definitive
   const ratedDefinitive = verdicts.filter(v => {
     const pred = predictionMap[v.claim_id] || 'neutral';
     return pred !== 'neutral' && v.verdict !== 'insufficient_evidence';
@@ -48,18 +39,11 @@ function AccuracySummary({ accuracy, verdicts, predictionMap }) {
   const pct = scoredTotal > 0 ? correct / scoredTotal : 0;
   const tier = SCORE_TIERS.find(t => pct >= t.min) || SCORE_TIERS[SCORE_TIERS.length - 1];
 
-  const metrics = [
-    { label: 'Precision', value: precision, display: `${(precision * 100).toFixed(0)}%` },
-    { label: 'Recall', value: recall, display: `${(recall * 100).toFixed(0)}%` },
-    { label: 'F1 Score', value: f1, display: f1.toFixed(2) },
-  ];
-
   return (
     <div className="px-4 pt-4 pb-3 border-b border-gray-200 bg-gray-50 shrink-0">
       <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Results</h2>
 
-      {/* Main score card */}
-      <div className={`flex items-center gap-4 rounded-xl border px-4 py-3 mb-3 ${tier.pill}`}>
+      <div className={`flex items-center gap-4 rounded-xl border px-4 py-3 ${tier.pill}`}>
         <span className="text-3xl leading-none">{tier.emoji}</span>
         <div className="flex-1 min-w-0">
           <div className={`text-2xl font-bold tabular-nums leading-none ${tier.num}`}>
@@ -75,23 +59,6 @@ function AccuracySummary({ accuracy, verdicts, predictionMap }) {
           <div className="text-xs font-semibold opacity-60 uppercase tracking-wide">identified</div>
         </div>
       </div>
-
-      {/* Metric tiles */}
-      <div className="flex gap-2">
-        {metrics.map(({ label, value, display }) => (
-          <div
-            key={label}
-            className={`flex-1 rounded-lg px-2 py-2 text-center ${metricTileClass(value)}`}
-          >
-            <div className="text-sm font-bold tabular-nums leading-none">{display}</div>
-            <div className="text-xs mt-0.5 opacity-70">{label}</div>
-          </div>
-        ))}
-      </div>
-
-      <p className="text-xs text-gray-400 mt-2 leading-snug">
-        Precision = accuracy of your flags &bull; Recall = how many false claims you caught
-      </p>
     </div>
   );
 }
