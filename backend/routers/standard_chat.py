@@ -1,7 +1,6 @@
-"""POST /api/chat/standard — Standard Chat SSE stream with hallucination injection."""
+"""POST /api/chat/standard — Standard Chat SSE stream with guaranteed hallucination injection."""
 
 import json
-import re
 import uuid
 from typing import AsyncGenerator
 
@@ -12,40 +11,23 @@ from google.genai import types
 from backend import gemini
 from backend.database import get_db
 from backend.models import StandardChatRequest
+from backend.pipeline.hallucination_injector import inject
 
 router = APIRouter()
 
-_META_RE = re.compile(r'<META>\s*(.*?)\s*</META>', re.DOTALL)
-
 _SYSTEM_INSTRUCTION = (
-    "You are a knowledgeable academic assistant helping students learn.\n\n"
-    "For TASK or FACTUAL questions: Answer concisely in 3–5 short paragraphs. "
-    "You MUST include exactly 2 subtle factual errors — one wrong date or number, "
-    "and one wrong name or place. These errors must sound completely plausible and "
-    "blend naturally with correct information. Do not signal or mark the errors.\n\n"
-    "For GREETINGS or CASUAL conversation: Respond naturally and briefly. No errors.\n\n"
-    "ALWAYS end your output with a metadata block in exactly this format:\n"
-    "<META>\n"
-    '{"is_task": true, "hallucinations": [{"injected": "the false text as it appears in your answer", "correct": "what it should actually be"}, {"injected": "...", "correct": "..."}]}\n'
-    "</META>\n\n"
-    "For greetings use:\n"
-    "<META>\n"
-    '{"is_task": false, "hallucinations": []}\n'
-    "</META>"
+    "You are a knowledgeable academic assistant helping students learn. "
+    "Answer the student's question concisely and factually in 3–5 short paragraphs. "
+    "Include key facts, dates, numbers, and names where relevant. "
+    "For greetings or casual conversation, respond naturally and briefly. "
+    "Do not add disclaimers about being an AI."
 )
 
+_GREETINGS = {"hi", "hello", "hey", "thanks", "thank you", "ok", "okay", "bye", "good morning", "good evening"}
 
-def _strip_meta(text: str) -> tuple[str, dict]:
-    """Strip <META>...</META> from text. Returns (clean_text, meta_dict)."""
-    match = _META_RE.search(text)
-    meta = {"is_task": False, "hallucinations": []}
-    if match:
-        try:
-            meta = json.loads(match.group(1))
-        except Exception:
-            pass
-        text = _META_RE.sub("", text).strip()
-    return text, meta
+
+def _is_greeting(message: str) -> bool:
+    return message.strip().lower().rstrip("!.,?") in _GREETINGS
 
 
 async def _stream_standard_chat(session_id: str, user_message: str) -> AsyncGenerator[str, None]:
@@ -68,35 +50,42 @@ async def _stream_standard_chat(session_id: str, user_message: str) -> AsyncGene
             token: str = chunk.text if chunk.text else ""
             if token:
                 full_parts.append(token)
-                payload = json.dumps({"token": token, "done": False})
-                yield f"data: {payload}\n\n"
+                yield f"data: {json.dumps({'token': token, 'done': False})}\n\n"
     except Exception as exc:
         yield f"data: {json.dumps({'token': '', 'done': True, 'error': str(exc)})}\n\n"
         return
 
-    full_raw = "".join(full_parts)
-    clean_response, meta = _strip_meta(full_raw)
+    clean_response = "".join(full_parts)
+    is_task = not _is_greeting(user_message)
 
-    # Persist assistant message (clean, no META)
+    # Inject exactly 2 hallucinations for task queries
+    final_response = clean_response
+    hallucinations = []
+    if is_task:
+        result = await inject(clean_response)
+        final_response = result["modified"]
+        hallucinations = result["hallucinations"][:2]
+
+    # Persist assistant message (hallucinated version)
     async with get_db() as conn:
         await conn.execute(
             "INSERT INTO messages (id, session_id, role, content) VALUES ($1, $2, $3, $4)",
-            message_id, session_id, "assistant", clean_response,
+            message_id, session_id, "assistant", final_response,
         )
 
-    # Persist hallucinated facts if this was a task query
-    if meta.get("is_task") and meta.get("hallucinations"):
-        hallucinations = meta["hallucinations"][:2]  # cap at 2
+    # Persist ground truth for analysis
+    if hallucinations:
         async with get_db() as conn:
             for i, h in enumerate(hallucinations):
                 await conn.execute(
-                    """INSERT INTO hallucinated_facts (id, session_id, message_id, fact_index, injected, correct)
+                    """INSERT INTO hallucinated_facts
+                       (id, session_id, message_id, fact_index, injected, correct)
                        VALUES ($1, $2, $3, $4, $5, $6)""",
                     uuid.uuid4().hex[:12], session_id, message_id, i,
                     h.get("injected", ""), h.get("correct", ""),
                 )
 
-    yield f"data: {json.dumps({'token': '', 'done': True, 'message_id': message_id, 'full_response': clean_response})}\n\n"
+    yield f"data: {json.dumps({'token': '', 'done': True, 'message_id': message_id, 'full_response': final_response})}\n\n"
 
 
 @router.post("/chat/standard")
