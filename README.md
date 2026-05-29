@@ -67,7 +67,7 @@ One participant (P001) marked all 19 claims as "Accurate" in Phase 2, never enga
 
 ## Demo
 
-<video src="figures/verifyChat_demo.mp4" controls width="100%"></video>
+▶️ [Watch Demo](https://stevens0-my.sharepoint.com/:v:/g/personal/sujjal_stevens_edu/IQBn14yx73LSTZt5w5FNiXp0AVT9MnLejXsKWyVGdj8Gtfk?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=Lqs4YO)
 
 ---
 
