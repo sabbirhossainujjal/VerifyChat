@@ -8,7 +8,7 @@ Students are increasingly relying on AI chatbots for academic tasks yet they lac
 
 We conducted a within-subjects study (N = 10) with undergraduate students across two conditions: standard chat baseline → VerifyChat.
 
-📄 [Project Report](<VerifyChat- A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models.pdf>)
+📄 [Project Report](<VerifyChat- A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models.pdf>)   🎥 [Demo](figures/verifyChat_demo.mp4)
 
 ---
 
