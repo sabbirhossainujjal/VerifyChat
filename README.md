@@ -1,15 +1,14 @@
 # VerifyChat
 
-**A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models** 
-
+**A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models**
 
 ---
 
-Students are increasingly relying on AI chatbots for academic tasks yet they lack systematic strategies for detecting factual errors. Existing verification tools either automate fact-checking completely or require leaving the chat interface entirely — both suppress genuine engagement. VerifyChat embeds claim-level verification directly in the chat workflow through a **predict-then-reveal** interaction pattern: students commit to a judgment about which claims are inaccurate *before* automated verdicts are shown. This cognitive forcing function is grounded in Buçinca et al.'s work showing that requiring deliberation before seeing AI recommendations significantly reduces overreliance.
+Students are increasingly relying on AI chatbots for academic tasks yet they lack systematic strategies for detecting factual errors. Existing verification tools either automate fact-checking completely or require leaving the chat interface entirely — both suppress genuine engagement. VerifyChat embeds claim-level verification directly in the chat workflow through a **predict-then-reveal** interaction pattern: students commit to a judgment about which claims are inaccurate _before_ automated verdicts are shown. This cognitive forcing function is grounded in Buçinca et al.'s work showing that requiring deliberation before seeing AI recommendations significantly reduces overreliance.
 
 We conducted a within-subjects study (N = 10) with undergraduate students across two conditions: standard chat baseline → VerifyChat.
 
-📄 [Project Report](VerifyChat- A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models.pdf)
+📄 [Project Report](<VerifyChat- A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models.pdf>)
 
 ---
 
@@ -50,7 +49,7 @@ Mean detection F1 improved from **0.035 → 0.109**. Statistical tests confirmed
 
 ![Workload comparison](figures/workload_comparison_with_means.png)
 
-Overall NASA-TLX ratings dropped across all four dimensions from Phase 1 to Phase 2. The largest reductions were on **Frustration** (3.13 → 0.88) and **Effort** (4.00 → 1.88). Two participants who entered without a source-checking habit reported *higher* effort with VerifyChat — consistent with the per-claim step feeling like additional work rather than a substitute strategy.
+Overall NASA-TLX ratings dropped across all four dimensions from Phase 1 to Phase 2. The largest reductions were on **Frustration** (3.13 → 0.88) and **Effort** (4.00 → 1.88). Two participants who entered without a source-checking habit reported _higher_ effort with VerifyChat — consistent with the per-claim step feeling like additional work rather than a substitute strategy.
 
 ### Usability and Preference
 
@@ -66,10 +65,16 @@ One participant (P001) marked all 19 claims as "Accurate" in Phase 2, never enga
 
 ---
 
+## Demo
+
+<video src="figures/verifyChat_demo.mov" controls width="100%"></video>
+
+---
+
 ## Stack
 
 - **Backend**: FastAPI / Python 3.11+ / aiosqlite
-- **Frontend**: React 
+- **Frontend**: React
 - **LLM**: Google Gemini (`gemini-2.5-flash`)
 - **Search**: Serper API
 
@@ -79,3 +84,5 @@ cd frontend && npm run dev   # port 5173
 ```
 
 Set `GEMINI_API_KEY` and `SERPER_API_KEY` in `.env`.
+
+---
