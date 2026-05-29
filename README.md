@@ -2,6 +2,7 @@
 
 **A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models**
 
+**Project for CourseCS 545 - Human-Computer Interaction**
 ---
 
 Students are increasingly relying on AI chatbots for academic tasks yet they lack systematic strategies for detecting factual errors. Existing verification tools either automate fact-checking completely or require leaving the chat interface entirely — both suppress genuine engagement. VerifyChat embeds claim-level verification directly in the chat workflow through a **predict-then-reveal** interaction pattern: students commit to a judgment about which claims are inaccurate _before_ automated verdicts are shown. This cognitive forcing function is grounded in Buçinca et al.'s work showing that requiring deliberation before seeing AI recommendations significantly reduces overreliance.
@@ -9,6 +10,7 @@ Students are increasingly relying on AI chatbots for academic tasks yet they lac
 We conducted a within-subjects study (N = 10) with undergraduate students across two conditions: standard chat baseline → VerifyChat.
 
 📄 [Project Report](<VerifyChat- A Chat-Integrated Fact-Checking System for Developing Student Verification Mental Models.pdf>)   🎥 [Demo](<https://stevens0-my.sharepoint.com/:v:/g/personal/sujjal_stevens_edu/IQBn14yx73LSTZt5w5FNiXp0AVT9MnLejXsKWyVGdj8Gtfk?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=Lqs4YO>)
+
 
 ---
 
