@@ -67,7 +67,7 @@ One participant (P001) marked all 19 claims as "Accurate" in Phase 2, never enga
 
 ## Demo
 
-<video src="figures/verifyChat_demo.mov" controls width="100%"></video>
+<video src="figures/verifyChat_demo.mp4" controls width="100%"></video>
 
 ---
 
